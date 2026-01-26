@@ -58,7 +58,7 @@ noBtn.addEventListener("touchstart", (e) => {
 // YES
 yesBtn.addEventListener("click", () => {
     message.textContent = "YAAAAAY 💖🐱 Best Valentine ever!";
-    kitten.src = "https://placekitten.com/401/301";
+    kitten.src = "media/happy_kitten.jpg";
     kitten.classList.add("zoom");
     noBtn.style.display = "none";
     startHearts();
