@@ -33,7 +33,10 @@ class Player:
 class GameState:
     players: List[Player]
     hands: dict[str, List[Card]]
+    playable : dict[str, List[Card]]
+    bottom_card : Card
     talon: List[Card]
+    talon_closed : bool
     trump: Suit
     current_player: str
     trick: List[Card]

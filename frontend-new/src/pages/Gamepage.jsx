@@ -33,7 +33,7 @@ export default function GamePage({ gameId }) {
                 playMove(gameId, { player_id: player, card: c }).then(fetchGame)
               }
             >
-              {c.rank} of {c.suit}
+              {c.rank} - {c.suit}
             </button>
           ))}
         </div>
