@@ -5,16 +5,21 @@ export async function createGame() {
   return res.json();
 }
 
-export async function getGame(gameId) {
-  const res = await fetch(`${BASE}/game/${gameId}`);
+export async function getGame(gameId, token) {
+  const res = await fetch(`${BASE}/game/${gameId}?token=${token}`);
   return res.json();
 }
 
-export async function playMove(gameId, move) {
+export async function playMove(gameId, token, move) {
+
   const res = await fetch(`${BASE}/game/${gameId}/move`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(move),
+    body: JSON.stringify({
+      player_token: token,
+      move : move,
+    }),
   });
+
   return res.json();
 }

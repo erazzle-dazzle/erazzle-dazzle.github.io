@@ -1,7 +1,7 @@
 import uuid
 from app.storage.memory_store import MemoryStore
-from app.core.models import GameState, Player, Card, Suit, Rank
-from app.core.rules import apply_move
+from app.core.models import GameState, Player, Card, Suit, Rank, PlayerInfo
+from app.core.rules import apply_move, other_player
 from app.core.deck import Deck 
 from typing import List
 
@@ -11,59 +11,89 @@ class GameService:
         self.store = MemoryStore()
 
     def create_game(self):
+        p1_token = str(uuid.uuid4())
+        p2_token = str(uuid.uuid4())
+
         game_id = str(uuid.uuid4())
         deck : Deck = Deck()
         cards_player1 : List[Card] = deck.draw_multiple(5)
         cards_player2 : List[Card] = deck.draw_multiple(5)
         bottom_card : Card = deck.draw_card()
 
+        info_player1 = PlayerInfo(
+            hand = cards_player1,
+            playable= cards_player1,
+            taken_tricks=[],
+            extra_points=0,
+            score=0
+        )
+
+        info_player2 = PlayerInfo(
+            hand = cards_player2,
+            playable= [],
+            taken_tricks=[],
+            extra_points=0,
+            score=0
+        )
+
         state = GameState(
             players=[Player(id="p1"), Player(id="p2")],
-            hands={
-                "p1": cards_player1,
-                "p2": cards_player2,
+            player_info={
+                "p1" : info_player1,
+                "p2" : info_player2
             },
-            playable={
-                "p1" : cards_player1,
-                "p2" : []
+            player_token={
+                p1_token : "p1",
+                p2_token : "p2"
             },
             bottom_card = bottom_card,
             talon=deck.cards,
-            talon_closed = False,
+            talon_closed_by = None,
             trump=bottom_card.suit,
             current_player="p1",
             trick=[],
-            scores={"p1": 0, "p2": 0},
+            winner = None
         )
 
         self.store.save(game_id, state)
-        return {"game_id": game_id}
-
-    def get_game(self, game_id: str):
-        return self.serialize(self.store.get(game_id))
-
-    def play_move(self, game_id: str, move: dict):
-        state = self.store.get(game_id)
-        new_state = apply_move(state, move["player_id"], move["card"])
-        self.store.save(game_id, new_state)
-        return self.serialize(new_state)
-    
-    def serialize(self, state : GameState):
         return {
+            "game_id": game_id,
+            "player_token": p1_token,
+            "invite_url": f"/game/{game_id}?token={p2_token}",
+        }
+
+    def get_game(self, game_id: str, player_token : str):
+        return self.serialize(self.store.get(game_id), player_token)
+
+    def play_move(self, game_id: str, player_token : str, move : dict):
+        state : GameState = self.store.get(game_id)
+        player_id = state.player_token[player_token]
+        new_state = apply_move(state, player_id, move)
+        self.store.save(game_id, new_state)
+        return self.serialize(new_state, player_token)
+    
+    def serialize(self, state : GameState, token : str):
+        result = {
             "players": [p.id for p in state.players],
-            "hands": {
-                pid: [{"suit": c.suit, "rank": c.rank} for c in cards]
-                for pid, cards in state.hands.items()
-            },
-            "playable" : {
-                pid: [{"suit": c.suit, "rank": c.rank} for c in cards]
-                for pid, cards in state.playable.items()
-            },
+            "player_info" : {},
             "bottom_card" : state.bottom_card,
             "talon" : [{"suit": c.suit, "rank": c.rank} for c in state.talon],
-            "talon_closed" : state.talon_closed,
+            "talon_closed_by" : state.talon_closed_by,
             "trump": state.trump,
             "current_player": state.current_player,
             "trick": [{"suit": c.suit, "rank": c.rank} for c in state.trick],
-            "scores": state.scores,
+            "winner" : None 
         }
+        pid = state.player_token[token]
+        opponent = other_player(state.players, pid)
+        result["player_info"]["you"] = {
+                    "hand" : state.player_info[pid].hand,
+                    "playable_cards" : state.player_info[pid].playable,
+                    "taken_tricks" : state.player_info[pid].taken_tricks,
+                    "extra_points" : state.player_info[pid].extra_points,
+                    "score" : state.player_info[pid].score
+                }
+        result["player_info"]["opponent"] = {
+            "hand_size": len(state.player_info[opponent].hand)
+        }
+        return result

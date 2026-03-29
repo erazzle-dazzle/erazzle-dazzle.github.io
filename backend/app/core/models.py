@@ -28,17 +28,24 @@ class Card:
 class Player:
     id: str
 
+@dataclass
+class PlayerInfo:
+    hand : List[Card]
+    playable : List[Card]
+    taken_tricks : List[Card]
+    extra_points : int
+    score : int
+
 
 @dataclass
 class GameState:
     players: List[Player]
-    hands: dict[str, List[Card]]
-    playable : dict[str, List[Card]]
-    bottom_card : Card
-    talon: List[Card]
-    talon_closed : bool
+    player_info : dict[str, PlayerInfo] 
+    player_token : dict [str, str]
+    bottom_card : Optional[Card]
     trump: Suit
-    current_player: str
+    talon: List[Card]
+    talon_closed_by : Optional[str]
+    current_player: Optional[str]
     trick: List[Card]
-    scores: dict[str, int]
-    closed: bool = False
+    winner : Optional[str]
