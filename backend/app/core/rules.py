@@ -40,7 +40,9 @@ def is_legal(card : Card, state : GameState, player_id : str) -> bool:
 def legal_moves(state: GameState, player_id: str) -> List[Card]:
     # TODO: 20, 40, Zudrehen
     result = []
-    if state.trick == []:
+    if state.current_player != player_id:
+        result = []
+    elif state.trick == []:
         result = state.player_info[player_id].hand
     elif state.talon_closed_by or state.talon == []:
         played_card : Card = state.trick[0]
@@ -86,9 +88,12 @@ def apply_move(state: GameState, player_id: str, card) -> GameState:
 
     if len(new_state.trick) == 1:
         new_state.current_player = other_player(state.players, player_id)
+        new_state.player_info[player_id].playable = []
+        new_state.player_info[new_state.current_player].playable = legal_moves(new_state, new_state.current_player)
         # todo add extra points
     else:
         winner = player_id if beats(new_state.trick[1], new_state.trick[0], new_state.trump) else other_player(new_state.players, player_id)
+        new_state.last_trick_winner = winner
         loser = other_player(new_state.players, winner)
         new_state.player_info[winner].taken_tricks += new_state.trick
         new_state.player_info[winner].score = points_of_card_list(new_state.player_info[winner].taken_tricks) + new_state.player_info[winner].extra_points
@@ -107,6 +112,8 @@ def apply_move(state: GameState, player_id: str, card) -> GameState:
             new_state.player_info[winner].hand.append(new_state.talon.pop(0))
             new_state.player_info[loser].hand.append(new_state.talon.pop(0))
         new_state.current_player = winner
+        new_state.player_info[winner].playable = legal_moves(new_state, winner)
+        new_state.player_info[loser].playable = legal_moves(new_state, loser)
     new_state.winner = determine_regular_winner(new_state)
     # TODO:
     # - resolve trick

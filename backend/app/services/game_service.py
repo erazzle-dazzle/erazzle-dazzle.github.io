@@ -52,7 +52,9 @@ class GameService:
             trump=bottom_card.suit,
             current_player="p1",
             trick=[],
-            winner = None
+            winner = None,
+            both_joined=False,
+            last_trick_winner= None
         )
 
         self.store.save(game_id, state)
@@ -73,27 +75,28 @@ class GameService:
         return self.serialize(new_state, player_token)
     
     def serialize(self, state : GameState, token : str):
+        pid = state.player_token[token]
+        opponent = other_player(state.players, pid)
         result = {
             "players": [p.id for p in state.players],
-            "player_info" : {},
+            "you" : {
+                    "hand" : state.player_info[pid].hand,
+                    "playable_cards" : state.player_info[pid].playable,
+                    "taken_tricks" : state.player_info[pid].taken_tricks,
+                    "extra_points" : state.player_info[pid].extra_points,
+                    "score" : state.player_info[pid].score,
+                    "won_last_trick" : (state.last_trick_winner == pid)
+                },
+            "opponent" : {
+                "hand_size": len(state.player_info[opponent].hand)
+            },
             "bottom_card" : state.bottom_card,
             "talon" : [{"suit": c.suit, "rank": c.rank} for c in state.talon],
             "talon_closed_by" : state.talon_closed_by,
             "trump": state.trump,
             "current_player": state.current_player,
             "trick": [{"suit": c.suit, "rank": c.rank} for c in state.trick],
-            "winner" : None 
-        }
-        pid = state.player_token[token]
-        opponent = other_player(state.players, pid)
-        result["player_info"]["you"] = {
-                    "hand" : state.player_info[pid].hand,
-                    "playable_cards" : state.player_info[pid].playable,
-                    "taken_tricks" : state.player_info[pid].taken_tricks,
-                    "extra_points" : state.player_info[pid].extra_points,
-                    "score" : state.player_info[pid].score
-                }
-        result["player_info"]["opponent"] = {
-            "hand_size": len(state.player_info[opponent].hand)
+            "winner" : None,
+            "both_joined" : state.both_joined
         }
         return result

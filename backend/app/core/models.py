@@ -49,3 +49,5 @@ class GameState:
     current_player: Optional[str]
     trick: List[Card]
     winner : Optional[str]
+    both_joined : bool
+    last_trick_winner : Optional[str]
