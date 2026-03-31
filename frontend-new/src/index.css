@@ -103,3 +103,23 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+input::placeholder {
+  color: #94a3b8;
+}

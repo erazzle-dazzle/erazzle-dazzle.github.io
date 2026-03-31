@@ -29,12 +29,18 @@ class Player:
     id: str
 
 @dataclass
+class Marriage:
+    suit : Suit
+    points : int
+
+@dataclass
 class PlayerInfo:
     hand : List[Card]
     playable : List[Card]
     taken_tricks : List[Card]
     extra_points : int
     score : int
+    marriages : List[Marriage]
 
 
 @dataclass

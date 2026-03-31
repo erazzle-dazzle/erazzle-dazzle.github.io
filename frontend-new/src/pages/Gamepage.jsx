@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
 import { getGame, playMove } from "../api";
 import Card from "../components/Card";
 import CardBack from "../components/CardBack";
+import Scoreboard from "../components/Scoreboard";
+import ResultPopup from "../components/ResultPopup";
+import { useRef } from "react";
 
 
 export default function GamePage() {
+  const [showResult, setShowResult] = useState(true);
+  const [result, setResult] = useState(null); // "win" | "lose"
+
   const [animatingCard, setAnimatingCard] = useState(null);
- const [resolving, setResolving] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [lastTrick, setLastTrick] = useState([]);
+  const playedCardRef = useRef(null);
   const [winner, setWinner] = useState(null);
 
   const [game, setGame] = useState(null);
@@ -30,12 +36,15 @@ export default function GamePage() {
 
   const fetchGame = async () => {
     const data = await getGame(gameId, token);
-    if (game?.trick?.length === 2 && data.trick.length === 0) {
+    const played = playedCardRef.current;
+
+    if (game?.trick?.length === 1 && data.trick.length === 0) {
       // trick just got cleared → we capture it
-      setLastTrick(game.trick);
+      setLastTrick(prev => [...game.trick, played]);
+      console.log(lastTrick)
       setResolving(true);
 
-      setWinner(game.you.won_last_trick ? "you" : "opponent");
+      setWinner(data.you.won_last_trick ? "you" : "opponent");
 
       console.log("Stored Winner of last trick")
 
@@ -44,6 +53,15 @@ export default function GamePage() {
         setLastTrick([]);
       }, 1000);
     }
+
+    if (!game?.winner && data.winner) {
+      // game just finished
+      const didWin = data.winner === "you";
+
+      setResult(didWin ? "win" : "lose");
+      setShowResult(true);
+    }
+
     setGame(data);
   };
 
@@ -75,19 +93,21 @@ export default function GamePage() {
           {trickToShow.map((c, i) => {
               const move =
                 resolving && winner === "you"
-                ? "translate(120px, 180px) rotate(15deg)"
+                ? "translate(260px, 180px) rotate(15deg)"
                 : resolving && winner === "opponent"
-                ? "translate(120px, -180px) rotate(-15deg)"
+                ? "translate(260px, -180px) rotate(-15deg)"
                 : "translate(0,0)";
+              return(
               <div
                 key={i}
                 style={{
                   transform: move,
-                  transition: `transform 0.6s ease-in-out ${i * 0.1}s`,
+                  transition: `transform 1s ease-in-out ${i * 0.3}s`,
                 }}
               >
                 <Card card={c} />
               </div>
+            )
           })}
           
         </div>
@@ -144,6 +164,9 @@ export default function GamePage() {
                     )}
                     onClick={async () => {
                       setAnimatingCard(c);
+                      playedCardRef.current = c;  
+                      console.log("Played Move");
+                      console.log(c);
 
                       // wait for animation
                       setTimeout(async () => {
@@ -162,8 +185,16 @@ export default function GamePage() {
             );
           })}
         </div>
-
       </div>
+        <div style={styles.scoreboard}>
+          <Scoreboard game={game} />
+        </div>
+        {showResult && (
+          <ResultPopup
+            result={result}
+            onClose={() => setShowResult(false)}
+          />
+        )}
     </div>
   );
 }
@@ -257,5 +288,13 @@ const styles = {
     right: "80px",
     transform: "rotate(270deg)",
     zIndex: 1,          // underneath
+  },
+
+  scoreboard: {
+    position: "absolute",
+    right: "100px",   // 👈 outside table
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: 5,
   },
 };

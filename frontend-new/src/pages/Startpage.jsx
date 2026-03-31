@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { createGame, getGame } from "../api";
+import { useNavigate } from "react-router-dom";
 
 function StartPage() {
+  const [joinCode, setJoinCode] = useState("");
   const [joinLink, setJoinLink] = useState(null);
   const navigate = useNavigate();
 
@@ -27,56 +28,108 @@ function StartPage() {
     navigate("/game/" + gameId +"?token=" + token);
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(joinLink);
+  const handleJoin = () => {
+    if (!joinCode) return;
+
+    // simple redirect (you’ll refine later)
+    window.location.href = `/game?token=${joinCode}`;
   };
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Schnapsn</h1>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Schnapsn</h1>
 
-      {!joinLink ? (
-        <div style={styles.card}>
-          <button onClick={handleCreate}>Create Game</button>
-          <button style={{ marginTop: 10 }}>Join Game</button>
+        <input
+          style={styles.input}
+          placeholder="Enter game code..."
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+                    onKeyDown={(e) => {
+            if (e.key === "Enter") handleJoin();
+          }}
+        />
+
+        <div style={styles.buttonRow}>
+          <button style={styles.secondary} onClick={handleJoin}>
+            Join Game
+          </button>
+
+          <button style={styles.primary} onClick={handleCreate}>
+            New Game
+          </button>
         </div>
-      ) : (
-        <div style={styles.card}>
-          <p>Send this link to your opponent:</p>
-          <div style={styles.linkBox}>{joinLink}</div>
-          <button onClick={copyLink}>Copy Link</button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
 
 const styles = {
-  container: {
+  page: {
     height: "100vh",
     display: "flex",
-    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
+    background: "radial-gradient(circle, #065f46, #022c22)",
   },
-  title: {
-    fontSize: "48px",
-    marginBottom: "30px",
-  },
+
   card: {
-    background: "#1e293b",
-    padding: "30px",
-    borderRadius: "16px",
+    background: "rgba(15, 23, 42, 0.85)",
+    backdropFilter: "blur(12px)",
+    padding: "40px",
+    borderRadius: "20px",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "10px",
+    gap: "20px",
+    width: "320px",
   },
-  linkBox: {
+
+  title: {
+    fontSize: "36px",
+    marginBottom: "10px",
+  },
+
+  input: {
+    width: "100%",
+    padding: "12px",
+    borderRadius: "10px",
+    border: "none",
+    outline: "none",
+    fontSize: "16px",
+    background: "#1e293b",
+    color: "white",
+    textAlign: "center",
+    boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
+  },
+
+  buttonRow: {
+    display: "flex",
+    gap: "10px",
+    width: "100%",
+  },
+
+  primary: {
+    flex: 1,
+    padding: "12px",
+    borderRadius: "10px",
+    border: "none",
+    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    color: "white",
+    cursor: "pointer",
+    transition: "0.2s",
+  },
+
+  secondary: {
+    flex: 1,
+    padding: "12px",
+    borderRadius: "10px",
+    border: "none",
     background: "#334155",
-    padding: "10px",
-    borderRadius: "8px",
-    wordBreak: "break-all",
+    color: "white",
+    cursor: "pointer",
+    transition: "0.2s",
   },
 };
 

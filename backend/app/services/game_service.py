@@ -25,7 +25,8 @@ class GameService:
             playable= cards_player1,
             taken_tricks=[],
             extra_points=0,
-            score=0
+            score=0,
+            marriages=[]
         )
 
         info_player2 = PlayerInfo(
@@ -33,7 +34,8 @@ class GameService:
             playable= [],
             taken_tricks=[],
             extra_points=0,
-            score=0
+            score=0,
+            marriages=[]
         )
 
         state = GameState(
@@ -85,10 +87,12 @@ class GameService:
                     "taken_tricks" : state.player_info[pid].taken_tricks,
                     "extra_points" : state.player_info[pid].extra_points,
                     "score" : state.player_info[pid].score,
-                    "won_last_trick" : (state.last_trick_winner == pid)
+                    "won_last_trick" : (state.last_trick_winner == pid),
+                    "marriages" : [{"suit" : m.suit, "points" : m.points} for m in state.player_info[pid].marriages]
                 },
             "opponent" : {
-                "hand_size": len(state.player_info[opponent].hand)
+                "hand_size": len(state.player_info[opponent].hand),
+                "marriages" : [{"suit" : m.suit, "points" : m.points} for m in state.player_info[opponent].marriages]
             },
             "bottom_card" : state.bottom_card,
             "talon" : [{"suit": c.suit, "rank": c.rank} for c in state.talon],

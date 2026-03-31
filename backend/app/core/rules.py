@@ -1,4 +1,4 @@
-from app.core.models import GameState, Player, Card, Suit, Player, Rank
+from app.core.models import GameState, Player, Card, Suit, Player, Rank, Marriage
 from typing import List, Optional
 
 def card_value(card : Card):
@@ -49,9 +49,9 @@ def legal_moves(state: GameState, player_id: str) -> List[Card]:
         beating : List[Card] = [card for card in state.player_info[player_id].hand if beats(card, played_card, state.trump)]
         beating_same_suit = [card for card in beating if card.suit == played_card.suit]
         result = beating if beating_same_suit == [] else beating_same_suit
+        result = state.player_info[player_id].hand if result == [] else result 
     else:
         result = state.player_info[player_id].hand
-    print(result)
     return result
 
 def cards_left_in_hand(state : GameState) -> bool:
@@ -79,6 +79,7 @@ def apply_move(state: GameState, player_id: str, card) -> GameState:
     # check for twenty or forty
     if state.trick == [] and has_marriage_in_suit(new_state, player_id, card.suit):
         state.player_info[player_id].extra_points += 40 if card.suit == state.trump else 20
+        state.player_info[player_id].marriages += [Marriage(card.suit, 40)] if card.suit == state.trump else [Marriage(card.suit, 20)]
 
     # Remove card
     new_state.player_info[player_id].hand.remove(card)
