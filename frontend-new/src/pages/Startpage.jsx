@@ -4,14 +4,15 @@ import { useNavigate } from "react-router-dom";
 
 function StartPage() {
   const [joinCode, setJoinCode] = useState("");
-  const [joinLink, setJoinLink] = useState(null);
+  const [inviteLink, setInviteLink] = useState(null);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
 
   const handleCreate = async () => {
     var res = await createGame();
     const gameId = res.game_id;
     const token = res.player_token;
-    setJoinLink(res.invite_url); // send this to opponent
+    setInviteLink(res.invite_url); // send this to opponent
     localStorage.setItem("token", token);
     localStorage.setItem("gameId", gameId);
     while(true) {
@@ -59,6 +60,26 @@ function StartPage() {
             New Game
           </button>
         </div>
+        {inviteLink && (
+          <div style={styles.inviteBox}>
+            <input
+              style={styles.input}
+              value={inviteLink}
+              readOnly
+            />
+
+            <button
+              style={styles.primary}
+              onClick={() => {
+                navigator.clipboard.writeText(inviteLink);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+            >
+              {copied ? "Copied! ✅" : "Copy Link"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -131,6 +152,13 @@ const styles = {
     cursor: "pointer",
     transition: "0.2s",
   },
+  inviteBox: {
+  marginTop: "10px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  width: "100%",
+},
 };
 
 export default StartPage
