@@ -49,7 +49,9 @@ def legal_moves(state: GameState, player_id: str) -> List[Card]:
         beating : List[Card] = [card for card in state.player_info[player_id].hand if beats(card, played_card, state.trump)]
         beating_same_suit = [card for card in beating if card.suit == played_card.suit]
         result = beating if beating_same_suit == [] else beating_same_suit
-        result = state.player_info[player_id].hand if result == [] else result 
+        if result == []:
+            result = [card for card in state.player_info[player_id].hand if card.suit == played_card.suit]
+            result = state.player_info[player_id].hand if result == [] else result
     else:
         result = state.player_info[player_id].hand
     return result
@@ -61,16 +63,42 @@ def cards_left_in_hand(state : GameState) -> bool:
     return result
 
 def determine_regular_winner(state : GameState) -> Optional[str]:
-    if not state.talon_closed_by:
-        for player, player_info in state.player_info.items():
-            if player_info.score >= 66:
-                return player
-        return None
-    else:
-        if not cards_left_in_hand(state):
-            return state.talon_closed_by if state.player_info[state.talon_closed_by].score >= 66 else other_player(state.players, state.talon_closed_by)
+    for player, player_info in state.player_info.items():
+        if player_info.score >= 66:
+            return player
+    if state.talon_closed_by and not cards_left_in_hand(state):
+        return state.talon_closed_by if state.player_info[state.talon_closed_by].score >= 66 else other_player(state.players, state.talon_closed_by)
+    if not cards_left_in_hand(state):
+        return state.last_trick_winner
+        
+def determine_points(game : GameState, winner : str) -> int:
+    loser = other_player(game.players, winner)
+    result = 0
+    if not game.talon_closed_by:
+        result = 3 if game.player_info[loser].score == 0 else (2 if game.player_info[loser].score < 33 else 1)
+    if game.talon_closed_by:
+        if winner == game.talon_closed_by:
+            result = game.talon_closed_points_self
+        else:
+            result = game.talon_closed_points_opp
+    return result
 
-def apply_move(state: GameState, player_id: str, card) -> GameState:
+def apply_move(state: GameState, player_id: str, move) -> GameState:
+    new_state : GameState = state  # later: deep copy
+    opp = other_player(new_state.players, player_id)
+
+    if move["type"] == "close_talon":
+        assert len(state.trick) == 0, "Talon cannot be closed right now" 
+        new_state.talon_closed_by = player_id
+        new_state.talon_closed_points_self = 3 if new_state.player_info[opp].score == 0 else (2 if new_state.player_info[opp].score < 33 else 1)
+        new_state.talon_closed_points_opp = 3 if new_state.player_info[player_id] == 0 else 2
+        return new_state
+    if move["type"] == "swap_trump":
+        assert len(state.trick) == 0, "Trump Card cannot be closed right now"
+        state.player_info[player_id].hand.append(state.bottom_card)
+        state.player_info[player_id].hand = [card for card in state.player_info[player_id].hand if card.suit != state.trump or card.rank != Rank.JACK]
+        state.bottom_card = Card(state.trump, Rank.JACK)
+    card = move["card"]
     card = Card(card["suit"], card["rank"])
     assert is_legal(card, state, player_id), "Illegal move"
     # Copy state (important!)
@@ -88,34 +116,39 @@ def apply_move(state: GameState, player_id: str, card) -> GameState:
     new_state.trick.append(card)
 
     if len(new_state.trick) == 1:
-        new_state.current_player = other_player(state.players, player_id)
+        new_state.current_player = opp
         new_state.player_info[player_id].playable = []
         new_state.player_info[new_state.current_player].playable = legal_moves(new_state, new_state.current_player)
         # todo add extra points
     else:
-        winner = player_id if beats(new_state.trick[1], new_state.trick[0], new_state.trump) else other_player(new_state.players, player_id)
+        winner = player_id if beats(new_state.trick[1], new_state.trick[0], new_state.trump) else opp
         new_state.last_trick_winner = winner
         loser = other_player(new_state.players, winner)
         new_state.player_info[winner].taken_tricks += new_state.trick
         new_state.player_info[winner].score = points_of_card_list(new_state.player_info[winner].taken_tricks) + new_state.player_info[winner].extra_points
         new_state.trick = []
-        if len(new_state.talon) == 0:
-            game_winner = determine_regular_winner(state)
-            if not game_winner:
-                game_winner = winner
-            new_state.winner = game_winner
-            return new_state
-        elif len(new_state.talon) == 1:
-            new_state.player_info[winner].hand.append(new_state.talon.pop(0))
-            new_state.player_info[loser].hand.append(new_state.bottom_card)
-            new_state.bottom_card = None
-        else:
-            new_state.player_info[winner].hand.append(new_state.talon.pop(0))
-            new_state.player_info[loser].hand.append(new_state.talon.pop(0))
+        if not new_state.talon_closed_by:
+            if len(new_state.talon) == 0:
+                game_winner = determine_regular_winner(state)
+                if not game_winner:
+                    game_winner = winner
+                new_state.winner = game_winner
+                return new_state
+            elif len(new_state.talon) == 1:
+                new_state.player_info[winner].hand.append(new_state.talon.pop(0))
+                new_state.player_info[loser].hand.append(new_state.bottom_card)
+                new_state.bottom_card = None
+            else:
+                new_state.player_info[winner].hand.append(new_state.talon.pop(0))
+                new_state.player_info[loser].hand.append(new_state.talon.pop(0))
         new_state.current_player = winner
         new_state.player_info[winner].playable = legal_moves(new_state, winner)
         new_state.player_info[loser].playable = legal_moves(new_state, loser)
     new_state.winner = determine_regular_winner(new_state)
+    if new_state.winner:
+        new_state.player_info[new_state.winner].game_points += determine_points(new_state, new_state.winner)
+        if new_state.player_info[new_state.winner].game_points >= 9:
+            new_state.bummerl_winner = new_state.winner
     # TODO:
     # - resolve trick
     # - draw from talon

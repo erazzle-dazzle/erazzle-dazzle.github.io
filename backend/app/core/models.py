@@ -4,10 +4,10 @@ from typing import List, Optional
 
 
 class Suit(str, Enum):
-    HEARTS = "hearts"
-    DIAMONDS = "diamonds"
-    CLUBS = "clubs"
     SPADES = "spades"
+    HEARTS = "hearts"
+    CLUBS = "clubs"
+    DIAMONDS = "diamonds"
 
 
 class Rank(str, Enum):
@@ -41,6 +41,7 @@ class PlayerInfo:
     extra_points : int
     score : int
     marriages : List[Marriage]
+    game_points : int
 
 
 @dataclass
@@ -57,3 +58,7 @@ class GameState:
     winner : Optional[str]
     both_joined : bool
     last_trick_winner : Optional[str]
+    talon_closed_points_opp : Optional[int]
+    talon_closed_points_self : Optional[int]
+    bummerl_winner : Optional[str]
+    starter : str
