@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getGame, playMove, shuffle } from "../api";
+import { getGame, playMove, shuffle, delete_game } from "../api";
 import Card from "../components/Card";
 import CardBack from "../components/CardBack";
 import Scoreboard from "../components/Scoreboard";
@@ -239,7 +239,7 @@ export default function GamePage() {
               if (!game.bummerl_winner){
                 const res = await shuffle(gameId);
               } else {
-                const res = await delete(gameId);
+                const res = await delete_game(gameId);
                 navigate("/");
               }
               setShowResult(false);

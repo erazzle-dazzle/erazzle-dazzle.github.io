@@ -20,7 +20,7 @@ export async function shuffle(gameId) {
   return res.json();
 }
 
-export async function shuffle(gameId) {
+export async function delete_game(gameId) {
   const res = await fetch(`${BASE}/game/${gameId}/delete`, { method: "POST" });
   return res.json();
 }
