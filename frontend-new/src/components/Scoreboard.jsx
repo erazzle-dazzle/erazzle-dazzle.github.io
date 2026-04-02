@@ -11,7 +11,7 @@ export default function Scoreboard({ game }) {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Score</h2>
+      <h2 style={styles.title}>Scoreboard</h2>
 
       {/* Points */}
       <div style={styles.section}>
@@ -19,10 +19,6 @@ export default function Scoreboard({ game }) {
         <div style={styles.row}>
           <span>You</span>
           <span>{you.score ?? 0}</span>
-        </div>
-        <div style={styles.row}>
-          <span>Opponent</span>
-          <span>{opponent.score ?? 0}</span>
         </div>
       </div>
 
@@ -57,14 +53,14 @@ export default function Scoreboard({ game }) {
 
       {/* Games won */}
       <div style={styles.section}>
-        <h3>Games</h3>
+        <h3>Game-Score</h3>
         <div style={styles.row}>
           <span>You</span>
-          <span>{you.games_won ?? 0}</span>
+          <span>{you.game_points ?? 0}</span>
         </div>
         <div style={styles.row}>
           <span>Opponent</span>
-          <span>{opponent.games_won ?? 0}</span>
+          <span>{opponent.game_points ?? 0}</span>
         </div>
       </div>
     </div>
@@ -85,6 +81,7 @@ const styles = {
   title: {
     textAlign: "center",
     marginBottom: "15px",
+    color : "white"
   },
 
   section: {

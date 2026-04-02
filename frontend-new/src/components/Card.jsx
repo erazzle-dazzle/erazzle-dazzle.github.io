@@ -41,13 +41,13 @@ export default function Card({ card, onClick, disabled }) {
         e.currentTarget.style.transform = "translateY(0)";
       }}
     >
-      <div>{card.rank}</div>
+      <div style={ {fontSize: "26px"}}>{card.rank} {symbol}</div>
 
-      <div style={{ fontSize: "26px", textAlign: "center" }}>
-        {symbol}
+      <div style={ {textAlign: "center" }}>
+        Werbung
       </div>
 
-      <div style={{ alignSelf: "flex-end" }}>{card.rank}</div>
+      <div style={{ fontSize: "26px", alignSelf: "flex-end" }}>{symbol} {card.rank}</div>
     </div>
   );
 }

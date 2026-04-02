@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { getGame, playMove } from "../api";
+import { getGame, playMove, shuffle } from "../api";
 import Card from "../components/Card";
 import CardBack from "../components/CardBack";
 import Scoreboard from "../components/Scoreboard";
-import ResultPopup from "../components/ResultPopup";
+import GameResultPopup from "../components/GameResultPopup";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 
 export default function GamePage() {
-  const [showResult, setShowResult] = useState(true);
+  const navigate = useNavigate();
+
+  const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState(null); // "win" | "lose"
 
   const [animatingCard, setAnimatingCard] = useState(null);
@@ -80,6 +83,13 @@ export default function GamePage() {
   const trickToShow = resolving ? lastTrick : game?.trick ?? [];
   return (
     <div style={styles.table}>
+        {/* Home Button */}
+        <button
+          style={styles.homeButton}
+          onClick={() => navigate("/")}
+        >
+          ⬅ Home
+        </button>
       <div style={styles.inner}>
         {/* Opponent hand */}
         <div style={styles.opponent}>
@@ -114,21 +124,57 @@ export default function GamePage() {
 
         {/* Talon */}
         <div style={styles.talonContainer}>
+            {/* count badge */}
+            {game.talon_size > 0 && (
+              <div style={styles.talonCount}>
+                {game.talon_size}
+              </div>
+            )}
+
           {/* trump card underneath */}
-          {game.bottom_card && (
+          {game.bottom_card && !game.talon_closed_by && (
             <div style={styles.trump}>
-              <Card card={game.bottom_card} />
+              <Card card={game.bottom_card}
+                    disabled={!game.you.can_close_talon}
+                    onClick={async () => {
+                      if (!game.bottom_card) return;
+
+                      const hasTrumpJack = game.you.hand.some(
+                        (c) =>
+                          c.rank === "J" &&
+                          c.suit === game.bottom_card.suit
+                      );
+
+                      if (hasTrumpJack) {
+                        await playMove(gameId, token, {
+                          type: "swap_trump",
+                        });
+                      } else if (game.you.can_close_talon) {
+                        await playMove(gameId, token, {
+                          type: "close_talon",
+                        });
+                      }
+
+                      fetchGame();
+                    }}
+                    />
             </div>
           )}
 
           {/* talon stack above */}
           <div style={styles.stack}>
-            {Array(game.talon_size)
+            {game.talon_size > 0 && Array({})
               .fill(0)
               .map((_, i) => (
                 <CardBack key={i} />
               ))}
           </div>
+          {/* closed talon card above */}
+          {game.bottom_card && game.talon_closed_by && (
+            <div style={styles.trump_closed}>
+              <CardBack />
+            </div>
+          )}
         </div>
 
         {/* Your hand */}
@@ -165,9 +211,6 @@ export default function GamePage() {
                     onClick={async () => {
                       setAnimatingCard(c);
                       playedCardRef.current = c;  
-                      console.log("Played Move");
-                      console.log(c);
-
                       // wait for animation
                       setTimeout(async () => {
                         await playMove(gameId, token, {
@@ -190,9 +233,19 @@ export default function GamePage() {
           <Scoreboard game={game} />
         </div>
         {showResult && (
-          <ResultPopup
+          <GameResultPopup
             result={result}
-            onClose={() => setShowResult(false)}
+            onClose={async () => {
+              if (!game.bummerl_winner){
+                const res = await shuffle(gameId);
+              } else {
+                const res = await delete(gameId);
+                navigate("/");
+              }
+              setShowResult(false);
+            }}
+            scoreYou = {game.you.game_points}
+            scoreOpp = {game.opponent.game_points}
           />
         )}
     </div>
@@ -285,10 +338,17 @@ const styles = {
     trump: {
     position: "absolute",
     top: "0px",
-    right: "80px",
+    right: "40px",
     transform: "rotate(270deg)",
     zIndex: 1,          // underneath
   },
+    trump_closed: {
+      position: "absolute",
+      top: "0px",
+      right: "40px",
+      transform: "rotate(270deg)",
+      zIndex: 100,          // underneath
+    },
 
   scoreboard: {
     position: "absolute",
@@ -296,5 +356,37 @@ const styles = {
     top: "50%",
     transform: "translateY(-50%)",
     zIndex: 5,
+  },
+
+  talonCount: {
+    position: "absolute",
+    top: "-40px",
+    right: "-10px",
+    background: "#1e293b",
+    color: "white",
+    borderRadius: "50%",
+    width: "28px",
+    height: "28px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "14px",
+    fontWeight: "bold",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+  },
+  homeButton: {
+    position: "fixed",
+    top: "20px",
+    left: "20px",
+    padding: "10px 16px",
+    borderRadius: "10px",
+    border: "none",
+    background: "rgba(15, 23, 42, 0.85)",
+    color: "white",
+    cursor: "pointer",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+    zIndex: 20,
+    transition: "0.2s",
   },
 };

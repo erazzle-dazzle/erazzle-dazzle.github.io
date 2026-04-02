@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createGame, getGame } from "../api";
+import { createGame, getGame, joinGame } from "../api";
 import { useNavigate } from "react-router-dom";
 
 function StartPage() {
@@ -12,7 +12,7 @@ function StartPage() {
     var res = await createGame();
     const gameId = res.game_id;
     const token = res.player_token;
-    setInviteLink(res.invite_url); // send this to opponent
+    setInviteLink(res.invite_token); // send this to opponent
     localStorage.setItem("token", token);
     localStorage.setItem("gameId", gameId);
     while(true) {
@@ -21,7 +21,7 @@ function StartPage() {
       console.log(res)
       var both_joined = res.both_joined;
       // change this, when joining works
-      if (!both_joined){
+      if (both_joined){
         break;
       }
 
@@ -29,11 +29,17 @@ function StartPage() {
     navigate("/game/" + gameId +"?token=" + token);
   };
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!joinCode) return;
 
     // simple redirect (you’ll refine later)
-    window.location.href = `/game?token=${joinCode}`;
+    var res = await joinGame(joinCode);
+    const gameId = res.game_id;
+    const token = res.player_token;
+    localStorage.setItem("token", token);
+    localStorage.setItem("gameId", gameId);
+
+    navigate("/game/" + gameId +"?token=" + token);
   };
 
   return (
@@ -76,7 +82,7 @@ function StartPage() {
                 setTimeout(() => setCopied(false), 1500);
               }}
             >
-              {copied ? "Copied! ✅" : "Copy Link"}
+              {copied ? "Copied! ✅" : "Copy Token"}
             </button>
           </div>
         )}
@@ -110,6 +116,7 @@ const styles = {
   title: {
     fontSize: "36px",
     marginBottom: "10px",
+    color : "white"
   },
 
   input: {

@@ -1,4 +1,4 @@
-export default function ResultPopup({ result, onClose }) {
+export default function GameResultPopup({ result, onClose, scoreYou, scoreOpp}) {
   const isWin = result === "win";
 
   return (
@@ -12,6 +12,7 @@ export default function ResultPopup({ result, onClose }) {
         }}
       >
         <h1>{isWin ? "You Win! 🎉" : "You Lose 😢"}</h1>
+        <h2>{`Game-Score : ${scoreYou} - ${scoreOpp}`}</h2>
 
         <button onClick={onClose} style={styles.button}>
           Close
