@@ -2,7 +2,7 @@
   "name": "frontend-new",
   "homepage" : "https://erazzle-dazzle.github.io/",
   "requires": true,
-  "private": true,
+  "private": false,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
