@@ -1,21 +1,9 @@
 import uuid
 from app.storage.memory_store import MemoryStore
-from app.core.models import GameState, Player, Card, Suit, Rank, PlayerInfo
-from app.core.rules import apply_move, other_player, card_value, legal_moves
+from app.core.models import GameState, Card, Suit, Rank
 from app.core.deck import Deck 
 from typing import List
-
-def card_sorting_helper(card : Card):
-    suit = card.suit
-    offset = card_value(card)
-    if suit == Suit.SPADES:
-        return 0 + offset
-    elif suit == Suit.HEARTS:
-        return 11 + offset
-    elif suit == Suit.CLUBS:
-        return 22 + offset
-    else: # -> suit == Suit.DIAMONDS
-        return 33 + offset
+from random import sample
 
 
 class GameService:
@@ -24,140 +12,53 @@ class GameService:
 
     def create_game(self):
         invite_token = str(uuid.uuid4())
-        p1_token = str(uuid.uuid4())
-        p2_token = str(uuid.uuid4())
-
         game_id = str(uuid.uuid4())
-        deck : Deck = Deck()
-        cards_player1 : List[Card] = deck.draw_multiple(5)
-        cards_player2 : List[Card] = deck.draw_multiple(5)
-        bottom_card : Card = deck.draw_card()
+        state = GameState()
 
-        info_player1 = PlayerInfo(
-            hand = cards_player1,
-            playable= cards_player1,
-            taken_tricks=[],
-            extra_points=0,
-            score=0,
-            marriages=[],
-            game_points=0
-        )
-
-        info_player2 = PlayerInfo(
-            hand = cards_player2,
-            playable= [],
-            taken_tricks=[],
-            extra_points=0,
-            score=0,
-            marriages=[],
-            game_points=0
-        )
-
-        state = GameState(
-            players=[Player(id="p1"), Player(id="p2")],
-            player_info={
-                "p1" : info_player1,
-                "p2" : info_player2
-            },
-            player_token={
-                p1_token : "p1",
-                p2_token : "p2"
-            },
-            bottom_card = bottom_card,
-            talon=deck.cards,
-            talon_closed_by = None,
-            trump=bottom_card.suit,
-            current_player="p1",
-            trick=[],
-            winner = None,
-            both_joined=False,
-            last_trick_winner= None,
-            talon_closed_points_opp=None,
-            talon_closed_points_self=None,
-            bummerl_winner=None,
-            starter = "p1"
-        )
+        random_index = sample([0,1], 1)[0]
+        player_token = list(state.player_tokens.keys())[random_index]
+        other_token = list(state.player_tokens.keys())[1 - random_index]
 
         self.store.save_game(game_id, state)
-        self.store.save_join_data(invite_token, {"game_id" : game_id, "player_token" : p2_token})
+        self.store.save_join_data(invite_token, {"game_id" : game_id, "player_token" : other_token})
         return {
             "game_id": game_id,
-            "player_token": p1_token,
+            "player_token": player_token,
             "invite_token": invite_token,
         }
     
     def join(self, token : str):
         result = self.store.join_game(token)
         game_id = result["game_id"]
-        game : GameState = self.store.get_game(game_id)
+        game = self.store.get_game(game_id)
+        assert game
         game.both_joined = True
         self.store.save_game(game_id, game)
         return result
 
     def get_game(self, game_id: str, player_token : str):
-        return self.serialize(self.store.get_game(game_id), player_token)
+        game = self.store.get_game(game_id)
+        assert game
+        assert player_token in game.player_tokens.keys(), "Invalid Player Token"
+        return self.produce_message(game, player_token)
 
     def play_move(self, game_id: str, player_token : str, move : dict):
-        state : GameState = self.store.get_game(game_id)
-        player_id = state.player_token[player_token]
-        new_state = apply_move(state, player_id, move)
-        self.store.save_game(game_id, new_state)
-        return self.serialize(new_state, player_token)
+        state = self.store.get_game(game_id)
+        assert state
+        pid = state.player_tokens[player_token]
+        state.apply_move(pid, move)
+        self.store.save_game(game_id, state)
+        return self.produce_message(state, player_token)
     
     def shuffle(self, game_id : str):
-        state : GameState = self.store.get_game(game_id)
-        if not state.winner:
+        state = self.store.get_game(game_id)
+        assert state
+        if not state.determine_winner():
             return {
             "game_id": game_id
         }
-        deck : Deck = Deck()
-        cards_player1 : List[Card] = deck.draw_multiple(5)
-        cards_player2 : List[Card] = deck.draw_multiple(5)
-        bottom_card : Card = deck.draw_card()
-
-        info_player1 = PlayerInfo(
-            hand = cards_player1,
-            playable= [],
-            taken_tricks=[],
-            extra_points=0,
-            score=0,
-            marriages=[],
-            game_points=state.player_info["p1"].game_points
-        )
-
-        info_player2 = PlayerInfo(
-            hand = cards_player2,
-            playable= [],
-            taken_tricks=[],
-            extra_points=0,
-            score=0,
-            marriages=[],
-            game_points=state.player_info["p2"].game_points
-        )
-        new_state = GameState(
-            players=[Player(id="p1"), Player(id="p2")],
-            player_info={
-                "p1" : info_player1,
-                "p2" : info_player2
-            },
-            player_token= state.player_token,
-            bottom_card = bottom_card,
-            talon=deck.cards,
-            talon_closed_by = None,
-            trump=bottom_card.suit,
-            current_player=other_player(state.players, state.starter),
-            trick=[],
-            winner = None,
-            both_joined=True,
-            last_trick_winner= None,
-            talon_closed_points_opp=None,
-            talon_closed_points_self=None,
-            bummerl_winner=state.bummerl_winner,
-            starter = other_player(state.players, state.starter)
-        )
-        new_state.player_info["p1"].playable = legal_moves(new_state, "p1")
-        new_state.player_info["p2"].playable = legal_moves(new_state, "p2")
-        self.store.save_game(game_id, new_state)
+        state.new_game()
+        self.store.save_game(game_id, state)
         return {
             "game_id": game_id
         }
@@ -169,37 +70,43 @@ class GameService:
         }
 
     
-    def serialize(self, state : GameState, token : str):
-        pid = state.player_token[token]
-        opponent = other_player(state.players, pid)
-        state.player_info[pid].hand.sort(key=lambda x : x.suit)
-        state.player_info[opponent].hand.sort(key=lambda x : card_sorting_helper(x))
+    def produce_message(self, state : GameState, token : str):
+        state.sort_hands()
+
+        you = state.player_tokens[token]
+
+        opp = state.other_player(you)
+
+        last_trick = state.tricks[-2].serialize() if len(state.tricks) >= 2 else None
+
+        first_trick_you = [trick for trick in state.tricks if trick.winner == you][0] if [trick for trick in state.tricks if trick.winner == you] else None
+        first_trick_opp = [trick for trick in state.tricks if trick.winner == opp][0] if [trick for trick in state.tricks if trick.winner == opp] else None
+
         result = {
-            "players": [p.id for p in state.players],
             "you" : {
-                    "hand" : state.player_info[pid].hand,
-                    "playable_cards" : state.player_info[pid].playable,
-                    "taken_tricks" : state.player_info[pid].taken_tricks,
-                    "extra_points" : state.player_info[pid].extra_points,
-                    "score" : state.player_info[pid].score,
-                    "won_last_trick" : (state.last_trick_winner == pid),
-                    "marriages" : [{"suit" : m.suit, "points" : m.points} for m in state.player_info[pid].marriages],
-                    "can_close_talon" : (len(state.trick) == 0 and state.current_player == pid and not state.talon_closed_by),
-                    "game_points" : state.player_info[pid].game_points
-                },
+                "hand" : state.hands[you],
+                "playable_cards" : state.legal_cards(you),
+                "first_taken_trick" : first_trick_you.serialize() if first_trick_you else None,
+                "score" : state.get_score(you),
+                "can_close_talon" : (len(state.tricks[-1].cards) == 0 and state.current_player == you),
+                "game_points" : state.game_points[you],
+                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == you]
+            },
             "opponent" : {
-                "hand_size": len(state.player_info[opponent].hand),
-                "marriages" : [{"suit" : m.suit, "points" : m.points} for m in state.player_info[opponent].marriages],
-                "game_points" : state.player_info[opponent].game_points
+                "hand_size" : len(state.hands[opp]),
+                "game_points" : state.game_points[opp],
+                "first_taken_trick" : first_trick_opp.serialize() if first_trick_opp else None,
+                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == opp]
             },
             "bottom_card" : state.bottom_card,
             "talon_size" : len(state.talon),
-            "talon_closed_by" : state.talon_closed_by,
-            "trump": state.trump,
+            "talon_closed" : bool(state.talon_closed_by),
             "current_player": state.current_player,
-            "trick": [{"suit": c.suit, "rank": c.rank} for c in state.trick],
-            "winner" : "you" if (state.winner == pid) else ("opponent" if state.winner else None),
+            "trick": state.tricks[-1].serialize(),
+            "last_trick" : last_trick,
+            "game_winner" : "you" if (state.determine_winner() == you) else ("opponent" if state.determine_winner() else None),
             "both_joined" : state.both_joined,
-            "bummerl_winner" : state.bummerl_winner
+            "bummerl_winner" : "you" if (state.game_points[you] >= 9) else ("opponent" if state.game_points[opp] >= 9 else None),
+            "marriages" : [marriage.serialize() for marriage in state.marriages]
         }
         return result
