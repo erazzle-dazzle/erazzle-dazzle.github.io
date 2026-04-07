@@ -43,7 +43,6 @@ class Card:
         return {"suit" : self.suit, "rank" : self.rank}
     
 
-
 @dataclass
 class Marriage:
     suit : Suit
