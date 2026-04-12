@@ -121,6 +121,11 @@ class GameState:
         self.trump = self.bottom_card.suit
         self.talon = cards
         self.active_marriage = None
+        self.marriages = []
+        self.tricks = [Trick()]
+        self.talon_closed_by = None
+        self.talon_closed_points_opp = None
+        self.talon_closed_points_self = None
 
     def other_player(self, pid : str) -> str:
         assert len(self.players) == 2, "Too many players"
@@ -131,7 +136,7 @@ class GameState:
         played_card = self.tricks[-1].cards[0]
         result = False
         if played_card.suit == card.suit:
-            result = (played_card.rank < card.rank)
+            result = (played_card.get_value() < card.get_value())
         elif card.suit == self.trump:
             result = True
         else:
@@ -147,20 +152,21 @@ class GameState:
             assert Card(suit, Rank.KING) in self.hands[pid], f"{suit}-King not in hand of {pid} - There was some error"
             assert Card(suit, Rank.QUEEN) in self.hands[pid], f"{suit}-Queen not in hand of {pid} - There was some error"
             return [Card(suit, Rank.KING), Card(suit, Rank.QUEEN)]
-        elif self.tricks[-1].cards == []:
+        elif self.tricks[-1].cards == [] or len(self.tricks[-1].cards) == 2:
             result = self.hands[pid]
         elif self.talon_closed_by or self.talon == []:
             played_card : Card = self.tricks[-1].cards[0]
             winning_cards : List[Card] = [card for card in self.hands[pid] if self._wins_trick(card)]
             same_suit_cards : List[Card] = [card for card in self.hands[pid] if card.suit == played_card.suit]
-            if winning_cards == [] and same_suit_cards == []:
-                result = self.hands[pid]
-            elif winning_cards == []:
+            same_suit_winning_cards : List[Card] = [card for card in same_suit_cards if card in winning_cards]
+            if same_suit_winning_cards != []:
+                result = same_suit_winning_cards
+            elif same_suit_cards != []:
                 result = same_suit_cards
-            elif same_suit_cards == []:
+            elif winning_cards != []:
                 result = winning_cards
             else:
-                result = [card for card in winning_cards if card in same_suit_cards]
+                result = self.hands[pid]
         else:
             result = self.hands[pid]
         return result
@@ -187,7 +193,7 @@ class GameState:
     
     def determine_winner(self) -> Optional[str]:
         # assert len(self.tricks[-1].cards) != 0, "The current trick is still open, there is no winner yet"
-        turns_left = len(self.hands[list(self.hands.keys())[0]]) >= 1
+        turns_left = len(self.hands[list(self.hands.keys())[0]]) >= 1 or len(self.hands[list(self.hands.keys())[1]]) >= 1
         for pid in self.players:
             if pid == self.current_player and self.get_score(pid) >= 66:
                 return pid
@@ -205,14 +211,17 @@ class GameState:
         elif self.talon_closed_by == loser:
             return self.talon_closed_points_opp
         else:
-            loser = self.other_player(winner)
             loser_points = self.get_score(loser)
             return 3 if loser_points == 0 else (2 if loser_points < 33 else 1)
 
     def get_possible_marriages(self, pid : str) -> List[Suit]:
         result = []
+        if self.current_player != pid or self.tricks[-1].cards != []:
+            return result
         hand = self.hands[pid]
         for suit in Suit:
+            if suit in [m.suit for m in self.marriages if m.pid == pid]:
+                continue
             result += [suit] if Card(suit, Rank.KING) in hand and Card(suit, Rank.QUEEN) in hand else []
         return result
     
@@ -264,6 +273,7 @@ class GameState:
                 card = Card(move["card"]["suit"], move["card"]["rank"])
                 opp = self.other_player(pid)
                 assert card in self.legal_cards(pid), f"Card {card} is an illegal Move"
+                self.hands[pid] = [c for c in self.hands[pid] if c != card] 
                 if len(self.tricks[-1].cards) == 0:
                     self.tricks[-1].cards.append(card)
                     self.current_player = opp

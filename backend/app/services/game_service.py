@@ -1,7 +1,6 @@
 import uuid
 from app.storage.memory_store import MemoryStore
 from app.core.models import GameState, Card, Suit, Rank
-from app.core.deck import Deck 
 from typing import List
 from random import sample
 
@@ -77,7 +76,7 @@ class GameService:
 
         opp = state.other_player(you)
 
-        last_trick = state.tricks[-2].serialize() if len(state.tricks) >= 2 else None
+        last_trick = state.tricks[-2] if len(state.tricks) >= 2 else None
 
         first_trick_you = [trick for trick in state.tricks if trick.winner == you][0] if [trick for trick in state.tricks if trick.winner == you] else None
         first_trick_opp = [trick for trick in state.tricks if trick.winner == opp][0] if [trick for trick in state.tricks if trick.winner == opp] else None
@@ -90,23 +89,29 @@ class GameService:
                 "score" : state.get_score(you),
                 "can_close_talon" : (len(state.tricks[-1].cards) == 0 and state.current_player == you),
                 "game_points" : state.game_points[you],
-                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == you]
+                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == you],
+                "won_last_trick" : True if (last_trick and last_trick.winner == you) else False,
+                "count_of_taken_tricks" : len([trick for trick in state.tricks if trick.winner == you]),
+                "possible_marriages" : state.get_possible_marriages(you)
             },
             "opponent" : {
                 "hand_size" : len(state.hands[opp]),
                 "game_points" : state.game_points[opp],
                 "first_taken_trick" : first_trick_opp.serialize() if first_trick_opp else None,
-                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == opp]
+                "marriages" : [marriage.serialize() for marriage in state.marriages if marriage.pid == opp],
+                "count_of_taken_tricks" : len([trick for trick in state.tricks if trick.winner == opp])
+
             },
             "bottom_card" : state.bottom_card,
             "talon_size" : len(state.talon),
             "talon_closed" : bool(state.talon_closed_by),
             "current_player": state.current_player,
             "trick": state.tricks[-1].serialize(),
-            "last_trick" : last_trick,
+            "last_trick" : last_trick.serialize() if last_trick else None,
             "game_winner" : "you" if (state.determine_winner() == you) else ("opponent" if state.determine_winner() else None),
             "both_joined" : state.both_joined,
             "bummerl_winner" : "you" if (state.game_points[you] >= 9) else ("opponent" if state.game_points[opp] >= 9 else None),
-            "marriages" : [marriage.serialize() for marriage in state.marriages]
+            "marriages" : [marriage.serialize() for marriage in state.marriages],
+            "trump" : state.trump
         }
         return result
